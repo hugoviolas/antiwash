@@ -43,33 +43,58 @@ router.get("/", async (req, res, next) => {
       excludeZeroValue: true,
       withMetadata: true,
       order: "desc",
-      maxCount: 0x3e8,
       category: ["erc721"],
     });
+    // Get one specific token
+    // const nftToken = 9546;
+    // const result = txHistory.transfers.filter((tx) => {
+    //   if (tx.erc721TokenId) {
+    //     return fromHex(tx.erc721TokenId) === nftToken;
+    //   }
+    // });
+    //console.log("result: ", result.lenght);
 
-    const nftToken = 9546;
-    const result = txHistory.transfers.filter(
-      (tx) => fromHex(tx.erc721TokenId) === nftToken
-    );
-    console.log(result);
+    // Get the longest TX History token
+    function getLongestTxHistory() {
+      let tokenId;
+      let longestHistory = 0;
+      let data;
+      txHistory.transfers.forEach((elem) => {
+        if (elem.erc721TokenId) {
+          tokenId = fromHex(elem.erc721TokenId);
+          const result = txHistory.transfers.filter((tx) => {
+            if (tx.erc721TokenId) {
+              return fromHex(tx.erc721TokenId) === tokenId;
+            }
+          });
+          if (result.length > longestHistory) {
+            longestHistory = result.length;
+            data = result;
+          }
+        }
+      });
+
+      console.log(data.length);
+
+      const jsonExport = JSON.stringify(data);
+      fs.writeFile(
+        "data.json",
+        jsonExport,
+        {
+          encoding: "utf8",
+        },
+        (err) => {
+          if (err) console.log(err);
+          else {
+            console.log("File written successfully");
+          }
+        }
+      );
+    }
+
+    getLongestTxHistory();
 
     //console.log(txHistory.transfers.length); // Number of TX
-
-    // const jsonExport = JSON.stringify(txHistory);
-    // fs.writeFile(
-    //   "data.csv",
-    //   jsonExport,
-    //   {
-    //     encoding: "utf8",
-    //   },
-    //   (err) => {
-    //     if (err) console.log(err);
-    //     else {
-    //       console.log("File written successfully");
-    //     }
-    //   }
-    // );
-
     res.status(200).json({ txHistory });
   } catch (error) {
     next(error);
