@@ -1,9 +1,16 @@
-const { Network, Alchemy, fromHex } = require("alchemy-sdk");
+const { Network, Alchemy, fromHex, toHex } = require("alchemy-sdk");
+const Web3 = require("web3");
+const web3 = new Web3(
+  new Web3.providers.HttpProvider(
+    "https://mainnet.infura.io/v3/97e8fc84901a47e988cd853cb82b6b07"
+  )
+);
+const erc20abi = require("./../public/abi/erc20abi.json");
 const fs = require("fs");
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
-const { json } = require("express");
+const { json, response } = require("express");
 const settings = {
   apiKey: process.env.API_KEY,
   network: Network.ETH_MAINNET,
@@ -96,6 +103,82 @@ router.get("/", async (req, res, next) => {
 
     //console.log(txHistory.transfers.length); // Number of TX
     res.status(200).json({ txHistory });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/nft", async (req, res, next) => {
+  try {
+    const tokenURIABI = [
+      {
+        inputs: [
+          {
+            internalType: "uint256",
+            name: "tokenId",
+            type: "uint256",
+          },
+        ],
+        name: "tokenURI",
+        outputs: [
+          {
+            internalType: "string",
+            name: "",
+            type: "string",
+          },
+        ],
+        stateMutability: "view",
+        type: "function",
+      },
+    ];
+
+    const tokenContract = "0xbc4ca0eda7647a8ab7c2061c2e118a18a936f13d"; // BAYC contract address
+    const tokenId = 1927; // A token we'd like to retrieve its metadata of
+    const contract = new web3.eth.Contract(tokenURIABI, tokenContract);
+
+    contract
+      .getPastEvents("allEvents", { fromBlock: 16485034, toBlock: "latest" })
+      .then((response) => {
+        console.log(response.length);
+        // Convert token ID to HEX
+        const token = web3.utils.toHex(tokenId);
+        const hexToken = web3.utils.padLeft(token, 64);
+        console.log(hexToken);
+
+        //Filter results by token ID
+        const data = response.filter((tx) => tx.raw.topics.includes(hexToken));
+        console.log(data.length);
+        res.status(200).json(response);
+      })
+      .catch((e) => console.log(e));
+
+    // Get TX Details from TX hash
+    web3.eth
+      .getTransaction(
+        "0x6343ebaa92229f40d67701fc37f12777f2d9f58d63d9987c908d2b925d8b81dc"
+      )
+      .then((response) => {
+        console.log(response);
+      });
+
+    // Get TX date
+    const blockNumber = 16485177;
+    web3.eth
+      .getBlock(blockNumber)
+      .then((response) => {
+        const timestamp = response.timestamp;
+        const txDate = new Date(timestamp * 1000);
+        console.log(txDate);
+      })
+      .catch((e) => console.log(e));
+
+    // Get wallet balance
+    const tokenAddresses = ["0x123", "0x456"];
+    const walletAddress = "0xacdaEEb57ff6886fC8e203B9Dd4C2b241DF89b7a";
+    web3.eth
+      .getBalance(walletAddress)
+      .then((response) => console.log("Balance is: ", response))
+      .catch((e) => console.log(e));
   } catch (error) {
     next(error);
   }
